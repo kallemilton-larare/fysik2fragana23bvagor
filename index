@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboration: Kalles Temperaturmätning</title>
+    
+    <!-- MathJax för äkta LaTeX (Kräver internetanslutning och att Trelson tillåter externa skript) -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        /* --- Grundläggande CSS --- */
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- Header & Instruktioner --- */
+        header {
+            max-width: 900px;
+            width: 100%;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1.5rem;
+        }
+
+        .instruction-box {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            text-align: left;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .instruction-box p {
+            margin-bottom: 1em;
+        }
+
+        .instruction-box strong {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .formula-box {
+            background-color: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .task-highlight {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            border-radius: 0 0.25rem 0.25rem 0;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* --- Huvudcontainer för simulering --- */
+        .sim-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Topp-panel (Längdreglage) --- */
+        .controls-top {
+            background-color: #f8fafc;
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .controls-group {
+            flex-grow: 1;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .label-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .value-display {
+            font-family: monospace;
+            font-weight: 700;
+            color: #2563eb;
+            font-size: 1rem;
+        }
+
+        .env-info {
+            display: none;
+            text-align: right;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-family: monospace;
+            padding-left: 1rem;
+            border-left: 1px solid #e2e8f0;
+        }
+
+        @media (min-width: 640px) {
+            .env-info { display: block; }
+        }
+
+        /* --- Canvas Area --- */
+        .canvas-area {
+            position: relative;
+            height: 450px;
+            background-color: white;
+            width: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        /* --- Funktionsgenerator (Apparaten) --- */
+        .device-box {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            width: 280px;
+            background: linear-gradient(to bottom, #334155, #1e293b);
+            border: 1px solid #475569;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 6px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 20;
+        }
+
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .device-title {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .led-light {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #7f1d1d; /* Mörkröd start */
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        .led-active {
+            background-color: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .led-inactive {
+            background-color: #7f1d1d;
+            box-shadow: none;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .digital-input {
+            background-color: #0f172a;
+            color: #4ade80;
+            font-family: 'Courier New', Courier, monospace;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+            outline: none;
+            text-align: right;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .digital-input:focus {
+            border-color: #4ade80;
+        }
+
+        .unit-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        /* --- Sliders --- */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        /* Slider Track */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        
+        /* Mörkare spår för generatorn */
+        .device-box input[type=range]::-webkit-slider-runnable-track {
+            background: #475569;
+        }
+
+        /* Slider Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px; /* Centrera på spåret */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        /* --- Mätare --- */
+        .meter-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .meter-label {
+            font-size: 0.6rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            width: 80px; /* Lite bredare för texten */
+        }
+
+        .meter-bar-bg {
+            flex-grow: 1;
+            background-color: #1e293b;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #475569;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background-color: #22c55e;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* --- Övrigt --- */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Instruktionssektion -->
+    <header>
+        <h1>Laboration: Temperaturmätning med Ljud</h1>
+        
+        <div class="instruction-box">
+           <p>
+               Kalle är i Norrland vid kusten (Havsnivå) och tycker det är mycket kallt. 
+               Han vill gärna berätta för sina vänner hemma i stockholm hur kallt det var för honom, 
+               men han har tyvärr glömt sin termometer.
+           </p>
+           <p>
+               Som tur är har han med sig ett <strong>halvöppet rör</strong> han kan variera längden på, 
+               en <strong>funktionsgenerator</strong> och en <strong>högtalare</strong> som han kan koppla till funktionsgeneratorn.
+           </p>
+           <p>
+               Kalle minns att ljudets hastighet i luft vid olika temperaturer kan beskrivas genom:
+           </p>
+
+           <!-- MathJax LaTeX Formel -->
+           <div class="formula-box">
+               <p style="font-size: 1.5rem; margin: 0 0 1.5rem 0;">
+                   $$ v = v_0 \cdot \sqrt{\frac{T}{T_0}} $$
+               </p>
+               
+               <p style="margin:0; font-size:0.9rem; line-height:1.5;">
+                   Där \( v_0 \) är ljudets hastighet vid \( 0^\circ\text{C} \) (331,5 m/s) och<br>
+                   \( T_0 \) är temperaturen \( 0^\circ\text{C} \) uttryckt i <strong>Kelvin</strong>.
+               </p>
+           </div>
+
+           <div class="task-highlight">
+               Din uppgift är att använda simuleringen för att hjälpa Kalle bestämma temperaturen.
+               <br><br>
+               <strong>OBS: Svara i grader Celsius</strong>, annars förstår inte Kalles icke-naturvetenskapligt intresserade vänner vad han menar.
+           </div>
+        </div>
+    </header>
+
+    <!-- Huvudcontainer -->
+    <div class="sim-container">
+        
+        <!-- Topp: Längdreglage -->
+        <div class="controls-top">
+            <div class="controls-group">
+                <div class="label-row">
+                    <span class="label-title">Rörlängd (L)</span>
+                    <span class="value-display"><span id="lenVal">50.0</span> <span style="font-size:0.8em; color:#64748b;">cm</span></span>
+                </div>
+                <input type="range" id="lenSlider" min="10" max="100" step="0.1" value="50">
+            </div>
+            
+            <div class="env-info">
+                <div style="font-weight:700; color:#475569;">Miljö</div>
+                <div>Havsnivå</div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-area">
+            <canvas id="canvas"></canvas>
+
+            <!-- Funktionsgenerator -->
+            <div class="device-box">
+                <div class="device-header">
+                    <span class="device-title">Funktionsgenerator</span>
+                    <div id="signalLed" class="led-light"></div>
+                </div>
+
+                <!-- Display -->
+                <div class="input-group">
+                    <input type="number" id="freqInput" value="440" min="100" max="1500" step="0.1" class="digital-input">
+                    <span class="unit-label">Hz</span>
+                </div>
+
+                <!-- Slider -->
+                <div>
+                    <input type="range" id="freqSlider" min="100" max="1500" step="1" value="440">
+                </div>
+
+                <!-- Resonanskännare -->
+                <div class="meter-container">
+                    <span class="meter-label">Resonanskännare</span>
+                    <div class="meter-bar-bg">
+                        <div id="amplitudeMeter" class="meter-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const freqSlider = document.getElementById('freqSlider');
+        const freqInput = document.getElementById('freqInput');
+        const lenSlider = document.getElementById('lenSlider');
+        const lenDisplay = document.getElementById('lenVal');
+        const ampMeter = document.getElementById('amplitudeMeter');
+        const signalLed = document.getElementById('signalLed');
+
+        // Fysikkonstanter (Dolda för användaren)
+        const tempC = -35;
+        const soundSpeed = 331.3 * Math.sqrt((tempC + 273.15) / 273.15);
+        
+        let particles = [];
+        const numParticles = 800;
+        let time = 0;
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < numParticles; i++) {
+                particles.push({
+                    xRel: Math.random(), 
+                    yRel: Math.random()
+                });
+            }
+        }
+
+        function resize() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        // Synkronisera slider och input
+        freqSlider.addEventListener('input', () => {
+            freqInput.value = freqSlider.value;
+        });
+
+        freqInput.addEventListener('input', () => {
+            let val = parseFloat(freqInput.value);
+            if (!isNaN(val) && val >= 100 && val <= 1500) {
+                freqSlider.value = val;
+            }
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let f = parseFloat(freqInput.value);
+            if (isNaN(f)) f = 440; 
+
+            const L_cm = parseFloat(lenSlider.value);
+            const L = L_cm / 100; // meter
+            const wavelength = soundSpeed / f;
+            
+            lenDisplay.innerText = L_cm.toFixed(1);
+
+            // Resonansberäkning
+            const quarterWaves = (4 * L) / wavelength;
+            const nearestInteger = Math.round(quarterWaves);
+            const isOdd = nearestInteger % 2 !== 0;
+            
+            let quality = 0;
+            if (isOdd) {
+                const deviation = Math.abs(quarterWaves - nearestInteger);
+                quality = Math.max(0, 1 - deviation * 5); 
+                quality = Math.pow(quality, 3);
+            }
+
+            // UI Feedback
+            ampMeter.style.width = (quality * 100) + "%";
+            
+            if (quality > 0.8) {
+                signalLed.className = "led-light led-active";
+            } else {
+                signalLed.className = "led-light led-inactive";
+            }
+
+            // Layout
+            const marginX = 40;
+            const tubeH = 100;
+            const startY = (canvas.height - tubeH) / 2 - 30; 
+            const startX = marginX;
+            
+            const maxPixelWidth = canvas.width - marginX * 2 - 120; 
+            const pixelPerMeter = maxPixelWidth / 1.0; 
+            const currentTubeW = L * pixelPerMeter;
+            const endX = startX + currentTubeW;
+
+            // --- RITA KABEL ---
+            const genX = canvas.width - 150; 
+            const genY = canvas.height - 20; 
+
+            ctx.beginPath();
+            ctx.moveTo(endX + 35, startY + tubeH/2 + 30); 
+            ctx.bezierCurveTo(
+                endX + 35, startY + tubeH + 50, 
+                genX - 100, genY - 80,          
+                genX, genY                     
+            );
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // --- RITA RÖRET ---
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 4;
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, startY);
+            ctx.moveTo(startX, startY + tubeH);
+            ctx.lineTo(endX, startY + tubeH);
+            ctx.moveTo(startX, startY - 2);
+            ctx.lineTo(startX, startY + tubeH + 2);
+            ctx.stroke();
+
+            // --- RITA HÖGTALARE ---
+            const spX = endX + 5;
+            const spCenterY = startY + tubeH / 2;
+            const spH = tubeH * 0.8;
+            
+            const phase = Math.sin(time * 0.2);
+            const vibe = phase * (2 + quality * 3);
+
+            ctx.fillStyle = "#64748b";
+            ctx.beginPath();
+            ctx.moveTo(spX + 20, spCenterY - 10);
+            ctx.lineTo(spX + vibe, spCenterY - spH/2);
+            ctx.lineTo(spX + vibe, spCenterY + spH/2);
+            ctx.lineTo(spX + 20, spCenterY + 10);
+            ctx.fill();
+            ctx.fillStyle = "#334155";
+            ctx.fillRect(spX + 20, spCenterY - 15, 10, 30);
+
+            // --- PARTIKLAR ---
+            const k = (2 * Math.PI) / wavelength;
+            // Ökad bas-amplitud (0.8) för synlig rörelse utan resonans
+            const currentAmp = 0.8 + (quality * 30);
+            
+            ctx.fillStyle = quality > 0.8 ? "rgba(34, 197, 94, 0.6)" : "rgba(71, 85, 105, 0.4)";
+            
+            particles.forEach(p => {
+                const realX = p.xRel * L;
+                const disp = (currentAmp * 0.0025) * Math.sin(k * realX) * phase;
+                const scale = pixelPerMeter; 
+                
+                const px = startX + (p.xRel * currentTubeW) + (disp * scale);
+                const py = startY + (p.yRel * tubeH);
+
+                if (px > startX + 2 && px < endX) {
+                    ctx.beginPath();
+                    ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // --- VÅGKURVA ---
+            ctx.strokeStyle = quality > 0.5 ? "rgba(220, 38, 38, 0.6)" : "rgba(203, 213, 225, 0.4)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i <= currentTubeW; i+=3) {
+                const xRel = i / currentTubeW;
+                const realX = xRel * L;
+                const waveY = (currentAmp * 1.5) * Math.sin(k * realX) * phase;
+                
+                const px = startX + i;
+                const py = startY + tubeH/2 - waveY;
+                
+                if (i===0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+
+            time += 1;
+            requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize();
+        initParticles();
+        draw();
+    </script>
+</body>
+</html>
